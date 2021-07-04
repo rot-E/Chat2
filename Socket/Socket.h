@@ -12,11 +12,6 @@
 extern const char CRLF[];
 extern const int DATA_MAX_SIZE;
 
-typedef enum {
-	UNICAST,
-	BROADCAST
-} CastMode;
-
 typedef struct Socket {
 	int _Socket;
 	fd_set _FDState;
