@@ -240,7 +240,7 @@ void main(const int argc, char* argv[]) {
 				break;
 
 			case 'h':
-				Console.WriteErrorLine(String.NewFormat("使用法： %s -u [Handle] (-p [Port]) (-t [Timeout]) (-v)\n", argv[0]));
+				Console.WriteErrorLine(String.NewFormat("使用法： %s -u [Handle] (-p [Port]) (-t [Timeout]) (-v)", argv[0]));
 				exit(EXIT_SUCCESS);
 		}
 	}

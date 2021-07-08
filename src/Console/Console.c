@@ -33,7 +33,7 @@ static void WriteColourLine(String_t *colour, String_t *string) {
 
 static void WriteErrorLine(String_t *string) {
 	fprintf(stderr, "%s\n", string->Unpack(string));
-	fflush(stdout);
+	fflush(stderr);
 }
 
 static void Erase() {
@@ -77,6 +77,8 @@ _Console Console = {
 	.Write							= Write,
 	.WriteLine						= WriteLine,
 	.WriteColourLine				= WriteColourLine,
+
+	.WriteErrorLine					= WriteErrorLine,
 
 	.Erase							= Erase,
 	.ErasePrevLine					= ErasePrevLine,
