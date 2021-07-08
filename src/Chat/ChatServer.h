@@ -1,29 +1,38 @@
 #pragma once
 
-#include <thread.h>
+#include <threads.h>
 #include <sys/select.h>
 
+#include "../SPEC/ESCAPE_SEQUENCE.h"
 #include "../Error/Error.h"
+#include "../Error/Failure.h"
+#include "../String/String.h"
+#include "../Console/Console.h"
+#include "../Socket/Socket.h"
+
 #include "CHAT.h"
 
 typedef struct ChatServer_t {
-	int _Port;
+	in_port_t _Port;
+	Socket_t *_Socket;
 
-	Error * (* Start)(struct ChatServer *);
-} ChatServer;
+	void (* Start)(struct ChatServer_t *);
+} ChatServer_t;
 
 typedef struct {
-	Error *E;
-	ChatServer *V;
+	Error_t *E;
+	ChatServer_t *V;
 } ChatServer_t_E;
 
 typedef struct {
-	Failure *F;
-	ChatServer *V;
+	Failure_t *F;
+	ChatServer_t *V;
 } ChatServer_t_F;
 
 typedef struct {
-
+	ChatServer_t *(* New)(const in_port_t port);
+	void (* Release)(ChatServer_t *);
+	void (* Delete)(ChatServer_t *);
 } _ChatServer;
 
 extern _ChatServer ChatServer;

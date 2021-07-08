@@ -2,7 +2,7 @@ AR = ar -cq
 CFLAGS = -g
 
 LIB = ../Chat.a
-OBJS = ChatClient.o CHAT.o
+OBJS = ChatClient.o ChatServer.o CHAT.o
 
 default: ${LIB}
 
