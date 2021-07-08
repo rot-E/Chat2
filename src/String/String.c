@@ -217,7 +217,7 @@ static String_t *NewN(const size_t size) {
 }
 
 static String_t *NewFormat(const uint8_t *format, ...) {
-	String_t *str = NewN(String.NEW_FORMAT_MAX_ALLOCATION_SIZE); // 要実装: cf. linux/lib/vsprintf.c#vsnprintf 等
+	String_t *str = NewN(String.NEW_FORMAT_MAX_ALLOCATION_SIZE); // 要実装
 
 	va_list ap;
 
