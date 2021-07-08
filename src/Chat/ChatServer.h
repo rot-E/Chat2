@@ -1,14 +1,12 @@
 #pragma once
 
-#include <pthread.h>
+#include <thread.h>
 #include <sys/select.h>
 
 #include "../Error/Error.h"
-#include "ChatData.h"
+#include "CHAT.h"
 
-#include "../mynet/mynet.h"
-
-typedef struct ChatServer {
+typedef struct ChatServer_t {
 	int _Port;
 
 	Error * (* Start)(struct ChatServer *);
@@ -16,7 +14,16 @@ typedef struct ChatServer {
 
 typedef struct {
 	Error *E;
-	ChatServer *ChatServer;
-} Return_NewChatServer;
+	ChatServer *V;
+} ChatServer_t_E;
 
-extern Return_NewChatServer * NewChatServer(const int port);
+typedef struct {
+	Failure *F;
+	ChatServer *V;
+} ChatServer_t_F;
+
+typedef struct {
+
+} _ChatServer;
+
+extern _ChatServer ChatServer;

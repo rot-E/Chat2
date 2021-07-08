@@ -1,8 +1,5 @@
 #include "ChatServer.h"
 
-/**
- * チャットサーバ処理を行う函数
- */
 static Error * Start(ChatServer *self) {
 	Error *err;
 
@@ -292,20 +289,30 @@ static Error * Start(ChatServer *self) {
 	return NewError(false);
 }
 
-/**
- * ChatServerの構築を行う函数
- */
-extern Return_NewChatServer * NewChatServer(const int port) {
-	Error *err;
 
-	ChatServer *svr = (ChatServer *)(malloc(sizeof(ChatServer)));
-		err = NewError(svr == NULL);
-		if (err->IsError(err)) { err->SetMessage(err, DYNAMIC_MEMORY_ALLOCTE_ERROR_MESSAGE); return &(Return_NewChatServer){ err }; }
+static ChatServer_t *New(const int port) {
+	ChatServer_t *svr = (ChatServer_t *)(Error.DYNAMIC_MEMORY_ALLOCATE_E.NewADT(sizeof(ChatServer_t)));
 
-	svr->Start = Start;
+	svr->Start		= Start;
 
+	svr->_Port		= port;
+	svr->_Socket	= NULL;
 
-	svr->_Port = port;
-
-	return &(Return_NewChatServer){ NewError(false), svr };
+	return svr;
 }
+
+static void Release(ChatServer_t *svr) {
+	close(svr->_Socket);
+}
+
+static void Delete(ChatServer_t *svr) {
+	ChatServer.Release(svr);
+	free(svr);
+}
+
+
+_ChatServer ChatServer = {
+	.New			= New,	
+	.Release		= Release,
+	.Delete			= Delete,
+};

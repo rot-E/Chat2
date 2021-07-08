@@ -214,7 +214,7 @@ void main(const int argc, char* argv[]) {
 	/* --------------------------------------------*/
 
 	/* コマンドライン引数の処理 */
-	String_t *handle;
+	String_t *handle = String.New("");
 
 	for (;;) {
 		int c = getopt(argc, argv, "u:p:t:vh");
@@ -223,6 +223,7 @@ void main(const int argc, char* argv[]) {
 		opterr = 0;
 		switch(c) {
 			case 'u':
+				String.Delete(handle);
 				handle = String.New(optarg);
 				break;
 
