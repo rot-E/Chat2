@@ -1,0 +1,62 @@
+#include "ESCAPE_SEQUENCE.h"
+
+_ESCAPE_SEQUENCE ESCAPE_SEQUENCE = {
+	.SET = {
+		.BOLD				= "\e[1m",
+		.DIM				= "\e[2m",
+		.UNDERLINED			= "\e[4m",
+		.BLINK				= "\e[5m",
+		.REVERSE			= "\e[7m",
+		.HIDDEN				= "\e[8m",
+	},
+
+	.RESET = {
+		.ALL				= "\e[0m",
+		.BOLD				= "\e[21m",
+		.DIM				= "\e[22m",
+		.UNDERLINED			= "\e[24m",
+		.BLINK				= "\e[25m",
+		.REVERSE			= "\e[27m",
+		.HIDDEN				= "\e[28m",
+	},
+
+	.TEXT = {
+		.DEFAULT			= "\e[39m",
+		.BLACK				= "\e[30m",
+		.RED				= "\e[31m",
+		.GREEN				= "\e[32m",
+		.YELLOW				= "\e[33m",
+		.BLUE				= "\e[34m",
+		.MAGENTA			= "\e[35m",
+		.CYAN				= "\e[36m",
+		.LIGHT_GRAY			= "\e[37m",
+		.DARK_GRAY			= "\e[90m",
+		.LIGHT_RED			= "\e[91m",
+		.LIGHT_GREEN		= "\e[92m",
+		.LIGHT_YELLOW		= "\e[93m",
+		.LIGHT_BLUE			= "\e[94m",
+		.LIGHT_MAGENTA		= "\e[95m",
+		.LIGHT_CYAN			= "\e[96m",
+		.WHITE				= "\e[97m",
+	},
+
+	.BACKGROUND = {
+		.DEFAULT			= "\e[49m",
+		.BLACK				= "\e[40m",
+		.RED				= "\e[41m",
+		.GREEN				= "\e[42m",
+		.YELLOW				= "\e[43m",
+		.BLUE				= "\e[44m",
+		.MAGENTA			= "\e[45m",
+		.CYAN				= "\e[46m",
+		.LIGHT_GRAY			= "\e[47m",
+		.DARK_GRAY			= "\e[100m",
+		.LIGHT_RED			= "\e[101m",
+		.LIGHT_GREEN		= "\e[102m",
+		.LIGHT_YELLOW		= "\e[103m",
+		.LIGHT_BLUE			= "\e[104m",
+		.LIGHT_MAGENTA		= "\e[105m",
+		.LIGHT_CYAN			= "\e[106m",
+		.WHITE				= "\e[107m",
+	},
+};
