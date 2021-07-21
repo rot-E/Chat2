@@ -1,10 +1,11 @@
-CFLAGS	= -I./include -g
-LIBS	= -L. -lNeoC -lpthread
+CC		= gcc
+CFLAGS	= -g
+LIBS	= -I./include -L. -lNeoC -lpthread
 
 default: Main
 
 Main: Chat.a
-	gcc ${CFLAGS} Main.c Chat.a ${LIBS} -o Main
+	${CC} ${CFLAGS} Main.c Chat.a ${LIBS} -o Main
 
 Chat.a:
 	make -C Chat
@@ -12,4 +13,4 @@ Chat.a:
 clean:
 	${RM} Main *.o
 	make clean -C Chat
-	${RM} -r NeoC*
+
