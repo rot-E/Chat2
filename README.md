@@ -1,7 +1,7 @@
 # Chat2
 Chat server/client written in C.
-
 <br>
+
 ## ビルド&実行
 ```sh
 $ git clone https://github.com/RotationE/Chat2.git
