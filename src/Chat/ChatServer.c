@@ -56,7 +56,7 @@ static int _recept(void *arg) {
 
 		/* "JOIN {handle}" を受信 */
 		// TODO: alarmで指定秒アクセスない→disconn, close goto top;
-		String_t *req = req = Socket.Receive(sock);
+		String_t *req = Socket.Receive(sock);
 
 		if (svr->_V) Console.WriteLine(String.NewFormat(
 			"[情報] 受信: %s",
