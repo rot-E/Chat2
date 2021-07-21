@@ -1,15 +1,14 @@
-AR = ar -cq
-CFLAGS = -g
+AR		= ar -cq
+CFLAGS	= -I../include -g
 
-LIB = ../Chat.a
-OBJS = ChatClient.o ChatServer.o CHAT.o
+OBJS = ChatClient.o ChatServer.o Chat.o
 
-default: ${LIB}
+default: ../Chat.a
 
-${LIB}: ${OBJS}
+../Chat.a: ${OBJS}
 	${RM} $@
 	${AR} $@ ${OBJS}
 
 clean:
 	${RM} ${OBJS}
-	${RM} ${LIB}
+	${RM} ../Chat.a

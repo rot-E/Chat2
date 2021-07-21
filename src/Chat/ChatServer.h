@@ -1,38 +1,46 @@
 #pragma once
 
+#include <NeoC/Annotation.h>
+#include <NeoC/Memory.h>
+#include <NeoC/String.h>
+#include <NeoC/Console.h>
+#include <NeoC/Socket.h>
+#include <NeoC/Data/Map.h>
+#include <NeoC/System.h>
+
+#include <NeoC/Debug.h>
+
 #include <threads.h>
 #include <sys/select.h>
+#include <arpa/inet.h>
 
-#include "../SPEC/ESCAPE_SEQUENCE.h"
-#include "../Error/Error.h"
-#include "../Error/Failure.h"
-#include "../String/String.h"
-#include "../Console/Console.h"
-#include "../Socket/Socket.h"
-
-#include "CHAT.h"
+#include "Chat.h"
 
 typedef struct ChatServer_t {
-	in_port_t _Port;
-	Socket_t *_Socket;
+	private String_t *_Handle;
+	private in_port_t _Port;
+	private Socket_t *_Socket;
 
-	void (* Start)(struct ChatServer_t *);
+	private Map_t in (Socket_t *, String_t *) *_User;
+	private fd_set _State;
+	private int32_t _Fd_Max;
+
+	private bool _V;
+
+	public void (* StartResponder)(struct ChatServer_t *) throws (Chat.Exception);
+	public void (* StartServer)(struct ChatServer_t *) throws (Chat.Exception);
+
+	public void (* Post)(struct ChatServer_t *, String_t *message) throws ();
 } ChatServer_t;
 
 typedef struct {
-	Error_t *E;
-	ChatServer_t *V;
-} ChatServer_t_E;
+	public ChatServer_t *(* New)(String_t *handle, const in_port_t port, const bool v);
+	public void (* Delete)(ChatServer_t *);
 
-typedef struct {
-	Failure_t *F;
-	ChatServer_t *V;
-} ChatServer_t_F;
+	public void (* StartResponder)(ChatServer_t *) throws (Chat.Exception);
+	public void (* StartServer)(ChatServer_t *) throws (Chat.Exception);
 
-typedef struct {
-	ChatServer_t *(* New)(const in_port_t port);
-	void (* Release)(ChatServer_t *);
-	void (* Delete)(ChatServer_t *);
+	public void (* Post)(ChatServer_t *, String_t *message) throws ();
 } _ChatServer;
 
 extern _ChatServer ChatServer;

@@ -1,19 +1,25 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <sys/socket.h>
 #include <signal.h>
 #include <errno.h>
 
-#include "SPEC/ESCAPE_SEQUENCE.h"
-#include "Error/Error.h"
-#include "String/String.h"
-#include "Console/Console.h"
-#include "Socket/Socket.h"
+#include <NeoC/Environment.h>
+#include <NeoC/Exception/Signal.h>
+#include <NeoC/Exception/Exception.h>
+#include <NeoC/SPEC/CC.h>
+#include <NeoC/SPEC/SGR.h>
+#include <NeoC/String.h>
+#include <NeoC/Console.h>
+#include <NeoC/Socket.h>
+#include <NeoC/System.h>
 
-#include "Chat/CHAT.h"
+#include "Chat/Chat.h"
 #include "Chat/ChatClient.h"
-#include "Chat/CHAT.h"
+#include "Chat/ChatServer.h"
 
-#include "EControl.h"
+SignalCode_t MainException;
 
 typedef enum {
 	Client, Server
@@ -24,19 +30,24 @@ typedef struct {
 	String_t *ip;
 } Result;
 
-Result ping(const bool v, const int timeout, const in_port_t port) {
+Result ping(const bool v, const int32_t timeout, const in_port_t port) throws (MainException) {
 	if (v)
 		Console.WriteLine(String.NewFormat(
-			"%s[情報] ポート番号 %s%d%s でチャットサーバの存在を確認中...%s",
-				ESCAPE_SEQUENCE.TEXT.YELLOW,
-				ESCAPE_SEQUENCE.TEXT.CYAN,
+			"%s[情報] ポート番号 %s%d%s のチャットサーバの存在を確認中...%s",
+				SGR.TEXT.YELLOW,
+				SGR.TEXT.CYAN,
 				port,
-				ESCAPE_SEQUENCE.TEXT.YELLOW,
-				ESCAPE_SEQUENCE.TEXT.DEFAULT
+				SGR.TEXT.YELLOW,
+				SGR.TEXT.DEFAULT
 		));
 
-	Socket_t *pinger = UnwrapE(Socket.NewUDPClient());
-	InspectE(pinger->ConfigureBroadcast(pinger, port));
+	Socket_t *pinger = NULL;
+	try {
+		pinger = Socket.NewUDPClient();
+		Socket.ConfigureBroadcast(pinger, port);
+	} catch (Socket.Exception) {
+		throw (Signal.Build(MainException, "通信失敗"));
+	} fin
 
 	struct sigaction action = {
 		.sa_handler = ({
@@ -47,166 +58,213 @@ Result ping(const bool v, const int timeout, const in_port_t port) {
 		}),
 		.sa_flags = 0,
 	};
-	InspectE(
-		Error.Build(
-			sigfillset(&action.sa_mask) == -1 ||
-			sigaction(SIGALRM, &action, NULL) == -1,
-			"シグナルハンドラの設定に失敗"
-		)
-	);
+
+	if (sigfillset(&action.sa_mask) == -1 || sigaction(SIGALRM, &action, NULL) == -1)
+			throw (Signal.Build(MainException, "シグナルハンドラの設定に失敗"));
 
 	for (int i = 0; i < 3; i++) {
-		InspectE(pinger->Broadcast(pinger, String.New("HELO")));
+		bool cont = false;
+		try {
+			Socket.Broadcast(pinger, String.New("HELO"));
+		} catch (Socket.Exception) {
+			throw (Signal.Build(MainException, "送信失敗/HELO"));
+		} fin
+
 		if (v)
 			Console.WriteLine(String.NewFormat(
 				"%s[情報] HELOメッセージをブロードキャスト%s",
-				ESCAPE_SEQUENCE.TEXT.YELLOW,
-				ESCAPE_SEQUENCE.TEXT.DEFAULT
+				SGR.TEXT.YELLOW,
+				SGR.TEXT.DEFAULT
 			));
 
 		alarm(timeout);
-		String_t_E sE = pinger->Collect(pinger);
-		if (sE.E->IsError(sE.E)) {
+		String_t *str = NULL;
+		try {
+			str = Socket.Collect(pinger);
+		} catch (Socket.Exception) {
 			if (errno == EINTR) {
 				// タイムアウト
 				if (v) {
-					Console.SetColour(String.New(ESCAPE_SEQUENCE.TEXT.YELLOW));
+					Console.SetColour(SGR.TEXT.YELLOW);
 					Console.WriteLine(String.NewFormat("[情報] 応答なし (%d秒間)", timeout));
 					Console.WriteLine(String.New("[情報] 再送"));
 					Console.SetDefaultColour();
 				}
-				continue;
+				cont = true;
 			} else {
-				InspectE(sE.E);
+				throw (Signal.Build(MainException, "受信失敗"));
 			}
-		}
+		} fin
 		alarm(0);
+		if (cont) continue;
 
-		if (sE.V->Equals(sE.V, String.New("HERE"))) {
+		if (String.Equals(str, String.New("HERE"))) {
 			if (v)
 				Console.WriteLine(String.NewFormat(
-					"%s[情報] HEREメッセージを %s%s%s より受信%s",
-					ESCAPE_SEQUENCE.TEXT.YELLOW,
-					ESCAPE_SEQUENCE.TEXT.CYAN,
+					"%s[情報] HEREメッセージを %s%s:%d%s より受信%s",
+					SGR.TEXT.YELLOW,
+					SGR.TEXT.CYAN,
 					({
 						String_t *ip = pinger->GetDestIPAddr(pinger);
-						ip->Unpack(ip);
+						String.Unpack(ip);
 					}),
-					ESCAPE_SEQUENCE.TEXT.YELLOW,
-					ESCAPE_SEQUENCE.TEXT.DEFAULT
+					pinger->GetDestPort(pinger),
+					SGR.TEXT.YELLOW,
+					SGR.TEXT.DEFAULT
 				));
 
-			return (Result){ Client, pinger->GetDestIPAddr(pinger) };
+			return (Result){ Client, Socket.GetDestIPAddr(pinger) };
 		}
 	}
 
 	return (Result){ Server, NULL };
 }
 
-void svrSh(const bool v, const in_port_t port) {
-	Error_t *err = Error.Build(true, "サーバが見つかりませんでした");
-	err->ExitIfError(err);
+void svrSh(const bool v, const in_port_t port, String_t *handle) throws (MainException) {
+	if (v) Console.WriteColourLine(SGR.TEXT.YELLOW, String.New(u8"[情報] チャットサーバとして動作中..."));
 
-	if (v)
-		Console.WriteLine(String.NewFormat(
-			"%s[情報] チャットサーバとして動作中...%s",
-			ESCAPE_SEQUENCE.TEXT.YELLOW,
-			ESCAPE_SEQUENCE.TEXT.DEFAULT
-		));
+	ChatServer_t *svr = ChatServer.New(handle, port, v);
+	svr->StartResponder(svr);
+	if (v) Console.WriteLine(String.NewFormat("[情報] %d番UDPポートでHELOメッセージ応答中", port));
+
+	svr->StartServer(svr);
+	if (v) Console.WriteLine(String.NewFormat("[情報] %d番TCPポートで待受中", port));
+
+	Console.WriteLine(String.NewFormat(
+		"%s[ハンドル名 %s%s%s として参加]%s",
+		SGR.TEXT.GREEN,
+		SGR.TEXT.CYAN,
+		handle->Unpack(handle),
+		SGR.TEXT.GREEN,
+		SGR.TEXT.DEFAULT
+	));
+
+	// シェル動作
+	for (;;) {
+		/* 標準入力がある場合 */
+		if (System.Keystroked()) {
+			String_t *str = String.NewN(Socket.DATA_MAX_SIZE);
+			fgets(str->Unpack(str), Socket.DATA_MAX_SIZE, stdin);
+			String_t *str2 = str->DropLastChar(str);
+			String.Delete(str);
+
+			Console.ErasePrevLine();
+
+			if (str2->GetLength(str2) == 0) {
+				Console.WriteChar(CC.BEL);
+
+				// do nothing
+			} else {
+				svr->Post(svr, str2);
+
+				String_t *line = String.NewFormat(
+					"[%s] %s",
+					String.Unpack(handle),
+					String.Unpack(str2)
+				);
+				Console.WriteColourLine(SGR.TEXT.RED, line);
+				String.Delete(line);
+			}
+
+			String.Delete(str2);
+		}
+	}
 }
 
-void cliSh(const bool v, String_t *ip, const in_port_t port, String_t *handle) {
+void cliSh(const bool v, String_t *ip, const in_port_t port, String_t *handle) throws (Chat.HandleMainException, Chat.NetworkMainException, Chat.MainException) {
 	if (v)
 		Console.WriteLine(String.NewFormat(
 			"%s[情報] チャットクライアントとして動作中...%s",
-			ESCAPE_SEQUENCE.TEXT.YELLOW,
-			ESCAPE_SEQUENCE.TEXT.DEFAULT
+			SGR.TEXT.YELLOW,
+			SGR.TEXT.DEFAULT
 		));
 
 	ChatClient_t *cli = ChatClient.New(ip, port);
-	InspectE(cli->Join(cli, handle));
+	cli->Join(cli, handle);
+
 	Console.WriteLine(String.NewFormat(
 		"%s%s[ハンドル名 %s%s%s として参加]%s",
 		(v)? "\n" : "",
-		ESCAPE_SEQUENCE.TEXT.GREEN,
-		ESCAPE_SEQUENCE.TEXT.CYAN,
+		SGR.TEXT.GREEN,
+		SGR.TEXT.CYAN,
 		handle->Unpack(handle),
-		ESCAPE_SEQUENCE.TEXT.GREEN,
-		ESCAPE_SEQUENCE.TEXT.DEFAULT
+		SGR.TEXT.GREEN,
+		SGR.TEXT.DEFAULT
 	));
 
 	if (v)
 		Console.WriteLine(String.NewFormat(
 			"%s[情報] 終了するには QUIT と打鍵してください%s",
-			ESCAPE_SEQUENCE.TEXT.YELLOW,
-			ESCAPE_SEQUENCE.TEXT.DEFAULT
+			SGR.TEXT.YELLOW,
+			SGR.TEXT.DEFAULT
 		));
 	Console.WriteLine(String.New("------------------------------------------------------------"));
 
-	fd_set state;
-	FD_ZERO(&state);
-	FD_SET(0, &state);
-
 	// シェル動作
 	bool prompt = true;
+	String_t *pt = String.New("> ");
+	String_t *quit_s = String.New("QUIT");
 	for (;;) {
 		if (prompt) {
-			Console.Write(String.New("> "));
+			Console.Write(pt);
 			prompt = false;
 		}
 
-		fd_set tmp = state;
-		select(1, &tmp, NULL, NULL, &(struct timeval){ .tv_sec = 0, .tv_usec = 0 });
-
 		/* 標準入力がある場合 */
-		if (FD_ISSET(0, &tmp)) {
+		if (System.Keystroked()) {
 			String_t *str = String.NewN(Socket.DATA_MAX_SIZE);
 			fgets(str->Unpack(str), Socket.DATA_MAX_SIZE, stdin);
-			String_t *str2 = String.New(UnwrapE(str->DropLastChar(str)));
+			String_t *str2 = str->DropLastChar(str);
 			String.Delete(str);
 
+			Console.ErasePrevLine();
+
 			if (str2->GetLength(str2) == 0) {
+				Console.WriteChar(CC.BEL);
+
 				// do nothing
-			} else if (str2->Equals(str2, String.New("QUIT"))) {
+			} else if (str2->Equals(str2, quit_s)) {
 				/* 退出 */
-				InspectE(cli->Quit(cli));
+				cli->Quit(cli);
 				exit(EXIT_SUCCESS);
 			} else {
-				InspectE(cli->Post(cli, str2));
+				cli->Post(cli, str2);
 
-				Console.WriteColourLine(
-					String.New(ESCAPE_SEQUENCE.TEXT.RED),
-					String.NewFormat(
-						"[%s] %s",
-						handle->Unpack(handle),
-						str2->Unpack(str2)
-					)
+				String_t *line = String.NewFormat(
+					"[%s] %s",
+					String.Unpack(handle),
+					String.Unpack(str2)
 				);
+				Console.WriteColourLine(SGR.TEXT.RED, line);
+				String.Delete(line);
 			}
 
+			String.Delete(str2);
 			prompt = true;
 		}
 
 		/* 更新がある場合 */
 		if (cli->UpdateExists(cli)) {
-			Console.CarriageReturn();
+			Console.WriteChar(CC.BEL);
+
+			Console.WriteChar(CC.CR);
 			Console.WriteColourLine(
-				String.New(ESCAPE_SEQUENCE.TEXT.BLUE),
-				UnwrapE(cli->GetMessage(cli))
+				SGR.TEXT.BLUE,
+				cli->GetMessage(cli)
 			);
 
 			prompt = true;
 		}
 	}
 
-	InspectE(cli->Quit(cli));
+	cli->Quit(cli);
 	ChatClient.Delete(cli);	
 }
 
 extern char *optarg;
-extern int optind, opterr, optopt;
+extern int32_t optind, opterr, optopt;
 
-void main(const int argc, char* argv[]) {
+void main(const int32_t argc, uint8_t *argv[]) $_ {
 	/* デフォルト値 ----------------------------------*/
 	in_port_t port		= 50001;
 	int32_t timeout		= 1;
@@ -217,7 +275,7 @@ void main(const int argc, char* argv[]) {
 	String_t *handle = String.New("");
 
 	for (;;) {
-		int c = getopt(argc, argv, "u:p:t:vh");
+		int c = getopt(argc, (char **)(argv), "u:p:t:vh");
 		if (c == -1) break;
 
 		opterr = 0;
@@ -240,19 +298,26 @@ void main(const int argc, char* argv[]) {
 				break;
 
 			case 'h':
-				Console.WriteErrorLine(String.NewFormat("使用法： %s -u [Handle] (-p [Port]) (-t [Timeout]) (-v)", argv[0]));
+				Console.WriteErrorLine(String.NewFormat("使用法： %s -u [Handle] (-p [Server Port]) (-t [Timeout]) (-v)", argv[0]));
 				exit(EXIT_SUCCESS);
 		}
 	}
-	InspectE(Error.Build(UnwrapE(handle->GetCharAt(handle, 0)) == '\0', "ハンドル名不指定"));
+
+	MainException signal;
+
+	if (String.GetCharAt(handle, 0) == '\0')
+		throw (Signal.Build(MainException, "ハンドル名不指定"));
 
 	/* C/S決定 */
 	Result r = ping(v, timeout, port);
 
 	/* チャット */
+	Chat.Setup();
 	if (r.m == Server) {
-		svrSh(v, port); /* Server動作 */
+		/* Server動作 */
+		svrSh(v, port, handle);
 	} else {
-		cliSh(v, r.ip, port, handle); /* Client動作 */
+		/* Client動作 */
+		cliSh(v, r.ip, port, handle);
 	}
-}
+} _$

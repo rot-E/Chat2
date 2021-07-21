@@ -1,79 +1,107 @@
 #include "ChatClient.h"
 
-static E Join(ChatClient_t *self, String_t *handle) {
+static void Join(ChatClient_t *cli, String_t *handle) throws (Chat.HandleException, Chat.NetworkException) {
 	/* ハンドル名検査 */
-	if (handle->GetLength(handle) > CHAT.HANDLE_LENGTH_MAX) return Error.Build(true, "ハンドル名の長さが不正");
+	if (String.GetLength(handle) > Chat.HANDLE_LENGTH_MAX) {
+		String_t *msg = String.NewFormat("ハンドル名が%d文字を超過", Chat.HANDLE_LENGTH_MAX);
+		defer {
+			String.Delete(msg);
+		} set execute {
+			throw (Signal.Build(Chat.HandleException, String.Unpack(msg)));
+		} ret
+	}
 
 	/* ハンドル名の設定 */
-	self->_Handle = String.New(handle->Unpack(handle));
+	cli->_Handle = String.New(String.Unpack(handle));
 
 	/* 接続 */
-	Socket_t_E sE = Socket.NewTCPClient(self->_Host, self->_Port);
-		if (sE.E->IsError(sE.E)) { return sE.E; } else { Error.Delete(sE.E); }
-	self->_Socket = sE.V;
+	try {
+		cli->_Socket = Socket.NewTCPClient(cli->_Host, cli->_Port);
+	} catch (Socket.Exception) {
+		String.Delete(cli->_Handle);
+		throw (Signal.Build(Chat.NetworkException, "接続失敗"));
+	} fin
 
 	/* 参加 */
 	// "JOIN {handle}" を送信
-	String_t *str = String.NewFormat("JOIN %s", handle);
-	Error_t *err = self->_Socket->Send(self->_Socket, str);
-		if (!err->IsError(err)) Error.Delete(err); else return err;
-
-	return Error.New(false);
+	String_t *str = String.NewFormat("JOIN %s", String.Unpack(handle));
+	try {
+		Socket.Send(cli->_Socket, str);
+	} catch (Socket.Exception) {
+		throw (Signal.Build(Chat.NetworkException, "送信失敗/JOIN"));
+	} finally {
+		String.Delete(str);
+	} end
 }
 
-static String_t *GetHandle(ChatClient_t *self) {
-	return self->_Handle;
+static String_t *GetHandle(ChatClient_t *cli) {
+	return cli->_Handle;
 }
 
-static E Post(ChatClient_t *self, String_t *message) {
+static void Post(ChatClient_t *cli, String_t *message) throws (Chat.NetworkException) {
 	/* 投稿 */
 	// "POST {message}" を送信
-	String_t *str = String.NewFormat("POST %s", message->Unpack(message));
-	Error_t *err = self->_Socket->Send(self->_Socket, str);
-		if (!err->IsError(err)) Error.Delete(err); else return err;
-
-	return Error.New(false);
+	String_t *str = String.NewFormat("POST %s", String.Unpack(message));
+	try {
+		Socket.Send(cli->_Socket, str);
+	} catch (Socket.Exception) {
+		throw (Signal.Build(Chat.NetworkException, "送信失敗/POST"));
+	} finally {
+			String.Delete(str);
+	} end
 }
 
-static bool UpdateExists(ChatClient_t *self) {
-	return self->_Socket->UpdateExists(self->_Socket);
+static bool UpdateExists(ChatClient_t *cli) {
+	return Socket.UpdateExists(cli->_Socket);
 }
 
-static String_t_E GetMessage(ChatClient_t *self) {
-	if (!self->UpdateExists(self)) return (String_t_E){ Error.Build(true, "更新無し") };
+static String_t *GetMessage(ChatClient_t *cli) throws (Chat.Exception, Chat.NetworkException) {
+	if (!ChatClient.UpdateExists(cli))
+		throw (Signal.Build(Chat.Exception, "更新無し"));
 
 	/* 新規メッセージ受信 */
-	String_t_E sE = self->_Socket->Receive(self->_Socket);
-		if (!sE.E->IsError(sE.E)) Error.Delete(sE.E); else return (String_t_E){ sE.E };
-	String_t *str = sE.V;
+	String_t *str = NULL;
+	try {
+		str = Socket.Receive(cli->_Socket);
+	} catch (Socket.DisconnectionException) {
+		throw (Signal.Build(Chat.NetworkException, "コネクション切断"));
+	} catchN (Socket.Exception) {
+		throw (Signal.Build(Chat.NetworkException, "受信失敗"));
+	} fin
 
 	// 解析
 	String_t *mesgOutset = String.New("MESG ");
-	bool_E bE = str->StartsWith(str, mesgOutset);
-		if (!bE.E->IsError(bE.E)) Error.Delete(bE.E); else return (String_t_E){ bE.E };
-		Error_t *err = Error.Build(!bE.V, "|MESG {message}| 形式外の文字列を受信");
+	if (!String.StartsWith(str, mesgOutset))
+		throw (Signal.Build(Chat.Exception, "|MESG {message}| 形式外の文字列を受信"));
 
-	uint8_t_ptr_E ui8ptrE = str->Substring(str, mesgOutset->GetLength(mesgOutset), str->GetLength(str) + 1);
-		if (!ui8ptrE.E->IsError(ui8ptrE.E)) Error.Delete(ui8ptrE.E); else return (String_t_E){ ui8ptrE.E };
-
-	return (String_t_E){ Error.New(false), String.New(ui8ptrE.V) };
+	defer {
+		String.Delete(str);
+		String.Delete(mesgOutset);
+	} set retrieve {
+		return String.Substring(str, String.GetLength(mesgOutset), String.GetLength(str) + 1);
+	} ret
 }
 
-static E Quit(ChatClient_t *self) {
+static void Quit(ChatClient_t *cli) throws (Chat.NetworkException) {
 	/* 退出 */
 	// "QUIT" を送信
-	Error_t *err = self->_Socket->Send(self->_Socket, String.New("QUIT"));	
-		if (!err->IsError(err)) Error.Delete(err); else return err;
+	try {
+		Socket.Send(cli->_Socket, String.New("QUIT"));
+	} catch (Socket.Exception) {
+		throw (Signal.Build(Chat.NetworkException, "送信失敗/QUIT"));
+	} fin
 
 	// 切断
-	self->_Socket->Disconnect(self->_Socket);
-
-	return Error.New(false);
+	Socket.Disconnect(cli->_Socket);
 }
 
-
 static ChatClient_t *New(String_t *host, const in_port_t port) {
-	ChatClient_t *cli = (ChatClient_t *)(Error.DYNAMIC_MEMORY_ALLOCATE_E.NewADT(sizeof(ChatClient_t)));
+	ChatClient_t *cli = (ChatClient_t *)(_Memory.Allocate(sizeof(ChatClient_t)));
+
+	cli->_Host			= String.New(String.Unpack(host));
+	cli->_Port			= port;
+	cli->_Socket		= NULL;
+	cli->_Handle		= NULL;
 
 	cli->Join			= Join;
 	cli->GetHandle		= GetHandle;
@@ -82,28 +110,24 @@ static ChatClient_t *New(String_t *host, const in_port_t port) {
 	cli->GetMessage		= GetMessage;
 	cli->Quit			= Quit;
 
-	cli->_Host			= String.New(host->Unpack(host));
-	cli->_Port			= port;
-	cli->_Socket		= NULL;
-	cli->_Handle		= NULL;
-
 	return cli;
 }
 
-static void Release(ChatClient_t *cli) {
+static void Delete(ChatClient_t *cli) {
 	String.Delete(cli->_Host);
 	Socket.Delete(cli->_Socket);
 	String.Delete(cli->_Handle);
-}
-
-static void Delete(ChatClient_t *cli) {
-	ChatClient.Release(cli);
 	free(cli);
 }
 
-
 _ChatClient ChatClient = {
-	.New		= New,
-	.Release	= Release,
-	.Delete		= Delete,
+	.New			= New,
+	.Delete			= Delete,
+
+	.Join			= Join,
+	.GetHandle		= GetHandle,
+	.Post			= Post,
+	.UpdateExists	= UpdateExists,
+	.GetMessage		= GetMessage,
+	.Quit			= Quit,
 };
