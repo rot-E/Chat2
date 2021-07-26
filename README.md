@@ -2,7 +2,7 @@
 Chat server/client written in C.
 <br>
 
-## ビルド&実行
+## ダウンロード&ビルド&実行
 ```sh
 git clone https://github.com/RotationE/Chat2.git
 cd Chat2
