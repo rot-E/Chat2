@@ -1,12 +1,11 @@
 #pragma once
 
-#include <NeoC/Annotation.h>
-#include <NeoC/Exception/Signal.h>
-#include <NeoC/Exception/Exception.h>
-
 #include <stdint.h>
+#include <NeoC/Base/Object.h>
+#include <NeoC/Base/Exception/Signal.h>
+#include <NeoC/Base/Exception/Exception.h>
 
-typedef struct {
+class _Chat {
 	private void (*Setup)();
 
 	public final SignalCode_t Exception;

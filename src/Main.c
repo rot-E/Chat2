@@ -4,16 +4,7 @@
 #include <sys/socket.h>
 #include <signal.h>
 #include <errno.h>
-
-#include <NeoC/Environment.h>
-#include <NeoC/Exception/Signal.h>
-#include <NeoC/Exception/Exception.h>
-#include <NeoC/SPEC/CC.h>
-#include <NeoC/SPEC/SGR.h>
-#include <NeoC/String.h>
-#include <NeoC/Console.h>
-#include <NeoC/Socket.h>
-#include <NeoC/System.h>
+#include <NeoC/NeoC.h>
 
 #include "Chat/Chat.h"
 #include "Chat/ChatClient.h"
@@ -71,10 +62,8 @@ Result ping(const bool v, const int32_t timeout, const in_port_t port) throws (M
 		} fin
 
 		if (v)
-			Console.WriteLine(String.NewFormat(
-				"%s[情報] HELOメッセージをブロードキャスト%s",
-				SGR.TEXT.YELLOW,
-				SGR.TEXT.DEFAULT
+			Console.WriteColourLine(SGR.TEXT.YELLOW, String.NewFormat(
+				"[情報] HELOメッセージをブロードキャスト"
 			));
 
 		alarm(timeout);
@@ -125,10 +114,10 @@ void svrSh(const bool v, const in_port_t port, String_t *handle) throws (MainExc
 
 	ChatServer_t *svr = ChatServer.New(handle, port, v);
 	svr->StartResponder(svr);
-	if (v) Console.WriteLine(String.NewFormat("[情報] %d番UDPポートでHELOメッセージ応答中", port));
+	if (v) Console.WriteColourLine(SGR.TEXT.YELLOW, String.NewFormat("[情報] %d番UDPポートでHELOメッセージ応答中", port));
 
 	svr->StartServer(svr);
-	if (v) Console.WriteLine(String.NewFormat("[情報] %d番TCPポートで待受中", port));
+	if (v) Console.WriteColourLine(SGR.TEXT.YELLOW, String.NewFormat("[情報] %d番TCPポートで待受中", port));
 
 	Console.WriteLine(String.NewFormat(
 		"%s[ハンドル名 %s%s%s として参加]%s",
@@ -173,10 +162,8 @@ void svrSh(const bool v, const in_port_t port, String_t *handle) throws (MainExc
 
 void cliSh(const bool v, String_t *ip, const in_port_t port, String_t *handle) throws (Chat.HandleMainException, Chat.NetworkMainException, Chat.MainException) {
 	if (v)
-		Console.WriteLine(String.NewFormat(
-			"%s[情報] チャットクライアントとして動作中...%s",
-			SGR.TEXT.YELLOW,
-			SGR.TEXT.DEFAULT
+		Console.WriteColourLine(SGR.TEXT.YELLOW, String.NewFormat(
+			"[情報] チャットクライアントとして動作中..."
 		));
 
 	ChatClient_t *cli = ChatClient.New(ip, port);
@@ -193,10 +180,8 @@ void cliSh(const bool v, String_t *ip, const in_port_t port, String_t *handle) t
 	));
 
 	if (v)
-		Console.WriteLine(String.NewFormat(
-			"%s[情報] 終了するには QUIT と打鍵してください%s",
-			SGR.TEXT.YELLOW,
-			SGR.TEXT.DEFAULT
+		Console.WriteColourLine(SGR.TEXT.YELLOW, String.NewFormat(
+			"[情報] 終了するには QUIT と打鍵してください"
 		));
 	Console.WriteLine(String.New("------------------------------------------------------------"));
 

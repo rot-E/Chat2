@@ -1,6 +1,6 @@
 #include "ChatClient.h"
 
-static void Join(ChatClient_t *cli, String_t *handle) throws (Chat.HandleException, Chat.NetworkException) {
+method static void Join(ChatClient_t *cli, String_t *handle) throws (Chat.HandleException, Chat.NetworkException) {
 	/* ハンドル名検査 */
 	if (String.GetLength(handle) > Chat.HANDLE_LENGTH_MAX) {
 		String_t *msg = String.NewFormat("ハンドル名が%d文字を超過", Chat.HANDLE_LENGTH_MAX);
@@ -34,11 +34,11 @@ static void Join(ChatClient_t *cli, String_t *handle) throws (Chat.HandleExcepti
 	} end
 }
 
-static String_t *GetHandle(ChatClient_t *cli) {
+method static String_t *GetHandle(ChatClient_t *cli) {
 	return cli->_Handle;
 }
 
-static void Post(ChatClient_t *cli, String_t *message) throws (Chat.NetworkException) {
+method static void Post(ChatClient_t *cli, String_t *message) throws (Chat.NetworkException) {
 	/* 投稿 */
 	// "POST {message}" を送信
 	String_t *str = String.NewFormat("POST %s", String.Unpack(message));
@@ -51,11 +51,11 @@ static void Post(ChatClient_t *cli, String_t *message) throws (Chat.NetworkExcep
 	} end
 }
 
-static bool UpdateExists(ChatClient_t *cli) {
+method static bool UpdateExists(ChatClient_t *cli) {
 	return Socket.UpdateExists(cli->_Socket);
 }
 
-static String_t *GetMessage(ChatClient_t *cli) throws (Chat.Exception, Chat.NetworkException) {
+method static String_t *GetMessage(ChatClient_t *cli) throws (Chat.Exception, Chat.NetworkException) {
 	if (!ChatClient.UpdateExists(cli))
 		throw (Signal.Build(Chat.Exception, "更新無し"));
 
@@ -82,7 +82,7 @@ static String_t *GetMessage(ChatClient_t *cli) throws (Chat.Exception, Chat.Netw
 	} ret
 }
 
-static void Quit(ChatClient_t *cli) throws (Chat.NetworkException) {
+method static void Quit(ChatClient_t *cli) throws (Chat.NetworkException) {
 	/* 退出 */
 	// "QUIT" を送信
 	try {
@@ -95,7 +95,7 @@ static void Quit(ChatClient_t *cli) throws (Chat.NetworkException) {
 	Socket.Disconnect(cli->_Socket);
 }
 
-static ChatClient_t *New(String_t *host, const in_port_t port) {
+method static ChatClient_t *New(String_t *host, const in_port_t port) {
 	ChatClient_t *cli = (ChatClient_t *)(_Memory.Allocate(sizeof(ChatClient_t)));
 
 	cli->_Host			= String.New(String.Unpack(host));
@@ -113,7 +113,7 @@ static ChatClient_t *New(String_t *host, const in_port_t port) {
 	return cli;
 }
 
-static void Delete(ChatClient_t *cli) {
+method static void Delete(ChatClient_t *cli) {
 	String.Delete(cli->_Host);
 	Socket.Delete(cli->_Socket);
 	String.Delete(cli->_Handle);

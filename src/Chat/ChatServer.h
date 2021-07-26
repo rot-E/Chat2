@@ -1,18 +1,17 @@
 #pragma once
 
-#include <NeoC/Annotation.h>
-#include <NeoC/Memory.h>
+#include <threads.h>
+#include <sys/select.h>
+#include <signal.h>
+#include <arpa/inet.h>
+#include <NeoC/Base/Object.h>
+#include <NeoC/Base/Memory.h>
 #include <NeoC/String.h>
 #include <NeoC/Console.h>
 #include <NeoC/Socket.h>
-#include <NeoC/Data/Map.h>
 #include <NeoC/System.h>
-
+#include <NeoC/Collection/Map.h>
 #include <NeoC/Debug.h>
-
-#include <threads.h>
-#include <sys/select.h>
-#include <arpa/inet.h>
 
 #include "Chat.h"
 

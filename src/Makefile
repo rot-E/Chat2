@@ -13,4 +13,3 @@ Chat.a:
 clean:
 	${RM} Main *.o
 	make clean -C Chat
-

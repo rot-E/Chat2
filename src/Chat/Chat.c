@@ -1,6 +1,6 @@
 #include "Chat.h"
 
-static void Setup() {
+method static void Setup() {
 	Chat.Exception signal;
 	Chat.HandleException signal;
 	Chat.NetworkException signal;
