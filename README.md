@@ -1,5 +1,5 @@
 # Chat2
-Chat server/client written in C.
+Chat server/client (C / gcc-extension + [NeoC](https://github.com/rot-E/NeoC)).
 <br>
 <br>
 
