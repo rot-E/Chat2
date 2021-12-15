@@ -22,5 +22,5 @@ make -j
 <br>
 
 ## 利用許諾
-**このリポジトリ内の一切の成果物は[`AGPLv3`](https://www.gnu.org/licenses/agpl-3.0.ja.html)でライセンスされています。**
+[`AGPLv3`]（LICENSE)
 
