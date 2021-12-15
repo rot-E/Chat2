@@ -1,5 +1,5 @@
 # Chat2
-Chat server/client (C / gcc-extension + [NeoC](https://github.com/rot-E/NeoC))
+Chat server/client (C / GNU extension + [NeoC](https://github.com/rot-E/NeoC))
 <br>
 <br>
 
